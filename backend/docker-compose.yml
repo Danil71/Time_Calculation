@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cocomo_db
+    environment:
+      POSTGRES_DB: SoftDev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dan
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    image: cocomo-backend:latest
+    container_name: cocomo_backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      # В Докере контейнеры общаются по их именам (здесь 'db'), а не localhost
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/SoftDev
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: dan
+      # Заставляем Hibernate обновить/создать таблицы при запуске
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
