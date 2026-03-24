@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -31,6 +30,7 @@ public class GitAnalysisService {
     private final GitCommitRepository commitRepository;
     private final ContributorRepository contributorRepository;
     private final CodeSnapshotRepository snapshotRepository;
+    private final CodeAnalyzer codeAnalyzer;
     
     private final JGitService jGitService;
 
@@ -95,20 +95,16 @@ public class GitAnalysisService {
 
             System.out.println("История сохранена. Всего коммитов обработано: " + commits.size());
 
-            // ====================================================================
-            // 4. TODO: Задачи №4 и №5 (CodeAnalyzer). 
-            // Здесь мы будем вызывать парсеры, чтобы они пробежались по tempDir
-            // и посчитали строки (SLOC) и сложность (McCabe).
-            // Пока оставляем заглушку для Среза Кода (CodeSnapshot), чтобы цепочка не рвалась.
-            // ====================================================================
-            
+            System.out.println("Статический анализ файлов кода...");
+            CodeAnalyzer.AnalysisResult analysisResult = codeAnalyzer.analyzeDirectory(tempDir);
+
             CodeSnapshot snapshot = CodeSnapshot.builder()
                     .project(project)
-                    .commitHash(commits.isEmpty() ? null : commits.get(0).hash()) // Берем последний коммит
-                    .totalSloc(15000L) // Заглушка
-                    .avgComplexity(12.5) // Заглушка
-                    .churnRate(0.15) // Заглушка
-                    .techStack(Map.of("Java", 12000L, "XML", 3000L)) // Заглушка
+                    .commitHash(commits.isEmpty() ? null : commits.get(0).hash())
+                    .totalSloc(analysisResult.totalSloc())
+                    .avgComplexity(analysisResult.avgComplexity())
+                    .churnRate(0.15) // Churn мы посчитаем в следующей задаче
+                    .techStack(analysisResult.techStack())
                     .build();
 
             snapshotRepository.save(snapshot);
