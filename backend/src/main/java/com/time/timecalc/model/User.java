@@ -32,7 +32,7 @@ public class User {
     private UUID id;
 
     @Column(unique = true, nullable = false)
-    private String email;
+    private String username;
 
     @Column(nullable = false)
     private String passwordHash;
