@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -46,6 +46,9 @@ export default function Login() {
           <Button type="submit" variant="contained" fullWidth sx={{ mt: 4, py: 1.5 }} disabled={loading}>
             {loading ? 'Вход...' : 'Войти'}
           </Button>
+          <Typography variant="body2" align="center" color="text.secondary" sx={{ mt: 3 }}>
+            Нет аккаунта? <Link to="/register" style={{ color: '#3B82F6', textDecoration: 'none' }}>Зарегистрироваться</Link>
+          </Typography>
         </form>
       </Paper>
     </Box>

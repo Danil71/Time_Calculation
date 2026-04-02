@@ -1,25 +1,35 @@
-import { Box, Button, Paper, TextField, Typography } from '@mui/material';
-import { useState } from 'react';
+import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/axiosClient';
 
 export default function AddProject() {
   const navigate = useNavigate();
-  const[name, setName] = useState('');
+  
+  const [name, setName] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
   const [branchName, setBranchName] = useState('main');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+
     try {
-      await api.post('/projects', { name, repoUrl, branchName, token });
+      await api.post('/projects', {
+        name,
+        repoUrl,
+        branchName,
+        token
+      });
+      // Если успешно добавили, перекидываем на главную
       navigate('/');
-    } catch (error) {
-        console.error('Ошибка бэкенда:', error);
-        alert('Ошибка при добавлении проекта');
+    } catch (err) {
+      console.error(err);
+      setError('Ошибка при сохранении проекта на сервере');
     } finally {
       setLoading(false);
     }
@@ -27,19 +37,45 @@ export default function AddProject() {
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', mt: 5 }}>
-      <Paper sx={{ p: 4 }}>
-        <Typography variant="h5" gutterBottom>Подключение репозитория</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Укажите ссылку на Git для анализа кода и профилирования команды.
+      <Paper elevation={0} sx={{ p: 4, borderRadius: 3 }}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Подключение репозитория
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Укажите данные Git-репозитория. Система сохранит их для последующего статического анализа.
+        </Typography>
+
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
         <form onSubmit={handleSubmit}>
-          <TextField fullWidth label="Название проекта" required value={name} onChange={(e) => setName(e.target.value)} margin="normal" />
-          <TextField fullWidth label="URL репозитория (.git)" required value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} margin="normal" />
-          <TextField fullWidth label="Ветка (Branch)" required value={branchName} onChange={(e) => setBranchName(e.target.value)} margin="normal" />
-          <TextField fullWidth label="Токен (PAT)" type="password" value={token} onChange={(e) => setToken(e.target.value)} margin="normal" helperText="Оставьте пустым для Open Source" />
-          <Button type="submit" variant="contained" fullWidth sx={{ mt: 3, py: 1.5 }} disabled={loading}>
-            {loading ? 'Сохранение...' : 'Добавить проект'}
-          </Button>
+          <TextField
+            fullWidth label="Название проекта" variant="outlined" margin="normal"
+            value={name} onChange={(e) => setName(e.target.value)} required
+          />
+          <TextField
+            fullWidth label="URL репозитория (.git)" variant="outlined" margin="normal"
+            value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} required
+            placeholder="https://github.com/user/repo.git"
+          />
+          <TextField
+            fullWidth label="Ветка (Branch)" variant="outlined" margin="normal"
+            value={branchName} onChange={(e) => setBranchName(e.target.value)} required
+          />
+          <TextField
+            fullWidth label="Personal Access Token (PAT)" variant="outlined" margin="normal"
+            type="password"
+            value={token} onChange={(e) => setToken(e.target.value)}
+            helperText="Оставьте пустым для публичных (Open Source) проектов"
+          />
+          
+          <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+            <Button variant="outlined" color="inherit" fullWidth onClick={() => navigate('/')}>
+              Отмена
+            </Button>
+            <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading}>
+              {loading ? 'Сохранение...' : 'Добавить проект'}
+            </Button>
+          </Box>
         </form>
       </Paper>
     </Box>

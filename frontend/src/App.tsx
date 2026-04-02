@@ -1,9 +1,12 @@
-import { CssBaseline, ThemeProvider, Typography } from '@mui/material';
+import { CssBaseline, ThemeProvider } from '@mui/material';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import type { JSX } from 'react/jsx-runtime';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import AddProject from './pages/AddProject';
+import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import { darkTechTheme } from './theme'; // Файл темы, который мы делали ранее
 
 // Защита маршрутов
@@ -13,18 +16,17 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-// Заглушка для Дашборда (напишем на Этапе 2)
-const DashboardStub = () => <Typography variant="h4">Главная страница: Дашборд</Typography>;
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       
       {/* Все защищенные страницы оборачиваем в Layout */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<DashboardStub />} />
-        {/* Здесь появятся другие роуты: /add, /project/:id и т.д. */}
+        <Route index element={<Dashboard />} />
+        <Route path="add" element={<AddProject />} />
       </Route>
     </Routes>
   );
