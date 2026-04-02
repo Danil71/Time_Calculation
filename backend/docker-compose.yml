@@ -30,5 +30,14 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     restart: unless-stopped
 
+  frontend:
+    image: cocomo-frontend:latest
+    container_name: cocomo_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres_data:
