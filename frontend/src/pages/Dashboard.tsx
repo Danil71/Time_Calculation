@@ -1,5 +1,5 @@
 import GitHubIcon from '@mui/icons-material/GitHub';
-import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardActions, CardContent, Chip, CircularProgress, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/axiosClient';
@@ -54,7 +54,6 @@ export default function Dashboard() {
           У вас пока нет ни одного проекта. Нажмите «Новый проект», чтобы начать.
         </Typography>
       ) : (
-        /* ЗАМЕНА ПРОБЛЕМНОГО GRID НА НАДЕЖНЫЙ BOX GRID */
         <Box sx={{ 
           display: 'grid', 
           gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: 'repeat(3, 1fr)' }, 
@@ -81,6 +80,17 @@ export default function Dashboard() {
                   Ветка: <strong>{project.branchName}</strong>
                 </Typography>
               </CardContent>
+              {/* ДОБАВЛЕННЫЙ БЛОК С КНОПКОЙ */}
+              <CardActions sx={{ p: 2, pt: 0 }}>
+                <Button 
+                  component={Link} 
+                  to={`/project/${project.id}`} 
+                  variant="outlined" 
+                  fullWidth
+                >
+                  Открыть аналитику
+                </Button>
+              </CardActions>
             </Card>
           ))}
         </Box>

@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AddProject from './pages/AddProject';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import ProjectDetails from './pages/ProjectDetails';
 import Register from './pages/Register';
 import { darkTechTheme } from './theme'; // Файл темы, который мы делали ранее
 
@@ -27,6 +28,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="add" element={<AddProject />} />
+        <Route path="project/:id" element={<ProjectDetails />} />
       </Route>
     </Routes>
   );
