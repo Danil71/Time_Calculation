@@ -12,9 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.time.timecalc.dto.EstimationResponse;
 import com.time.timecalc.model.CodeSnapshot;
 import com.time.timecalc.model.EstimationReport;
+import com.time.timecalc.model.ProgrammingLanguage;
 import com.time.timecalc.model.json.CocomoParams;
 import com.time.timecalc.repository.CodeSnapshotRepository;
 import com.time.timecalc.repository.EstimationReportRepository;
+import com.time.timecalc.repository.ProgrammingLanguageRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,17 +26,37 @@ public class CocomoEngineService {
 
     private final CodeSnapshotRepository snapshotRepository;
     private final EstimationReportRepository reportRepository;
+    private final ProgrammingLanguageRepository programmingLanguageRepository;
 
     private static final double A_CONSTANT = 2.94;
     private static final double B_CONSTANT = 0.91;
 
     @Transactional
-    public EstimationResponse calculateEstimation(UUID projectId) {
-        // Ищем самый свежий анализ кода
+    public EstimationResponse calculateEstimation(UUID projectId, Map<String, Double> targetFpDetails) {
         CodeSnapshot snapshot = snapshotRepository.findFirstByProjectIdOrderByAnalyzedAtDesc(projectId)
-                .orElseThrow(() -> new RuntimeException("Для проекта еще не был проведен анализ Git-репозитория"));
+        .orElseThrow(() -> new RuntimeException("Сначала проанализируйте код"));
 
-        double ksloc = snapshot.getTotalSloc() / 1000.0;
+        long slocToCalculate = snapshot.getTotalSloc(); // По умолчанию Аудит
+
+        // МАГИЯ: СУММИРУЕМ SLOC ПО КАЖДОМУ ЯЗЫКУ ОТДЕЛЬНО!
+        if (targetFpDetails != null && !targetFpDetails.isEmpty()) {
+            long calculatedSloc = 0;
+            
+            for (Map.Entry<String, Double> entry : targetFpDetails.entrySet()) {
+                String langName = entry.getKey();
+                Double fp = entry.getValue();
+                
+                // Достаем плотность языка из БД (если нет, берем среднее 50)
+                int locPerFp = programmingLanguageRepository.findById(langName)
+                        .map(ProgrammingLanguage::getLocPerFp)
+                        .orElse(50); 
+                
+                calculatedSloc += (long) (fp * locPerFp);
+            }
+            slocToCalculate = calculatedSloc;
+        }
+
+        double ksloc = slocToCalculate / 1000.0;
         if (ksloc <= 0) ksloc = 0.1;
 
         double scaleFactorE = B_CONSTANT + (0.01 * snapshot.getAvgComplexity());
@@ -68,6 +90,7 @@ public class CocomoEngineService {
 
         EstimationReport report = EstimationReport.builder()
                 .snapshot(snapshot)
+                .targetFpDetails(targetFpDetails)
                 .effortPm(effortPm)
                 .durationMonths(durationMonths)
                 .teamSize(teamSize)

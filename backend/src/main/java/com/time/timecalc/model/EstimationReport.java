@@ -1,6 +1,7 @@
 package com.time.timecalc.model;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -54,4 +55,8 @@ public class EstimationReport {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "applied_params", columnDefinition = "jsonb")
     private CocomoParams appliedParams;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "target_fp_details", columnDefinition = "jsonb")
+    private Map<String, Double> targetFpDetails;
 }
