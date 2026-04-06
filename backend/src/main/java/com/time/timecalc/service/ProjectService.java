@@ -32,7 +32,7 @@ public class ProjectService {
                 .name(request.getName())
                 .repoUrl(request.getRepoUrl())
                 .branchName(request.getBranchName() != null ? request.getBranchName() : "main")
-                .authTokenEnc(request.getToken()) // TODO: Здесь будет AES шифрование
+                .authTokenEnc(request.getToken())
                 .status(ProjectStatus.ACTIVE)
                 .currentRiskLevel(RiskLevel.LOW)
                 .build();
@@ -60,7 +60,7 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Проект не найден"));
         
         project.setActualDurationMonths(durationMonths);
-        project.setStatus(ProjectStatus.COMPLETED); // Переводим в завершенные
+        project.setStatus(ProjectStatus.COMPLETED);
         
         return mapToResponse(projectRepository.save(project));
     }

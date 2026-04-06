@@ -41,18 +41,14 @@ public class GitAnalysisService {
 
         File tempDir = null;
         try {
-            // 1. Клонируем репозиторий с помощью реального JGitService
             System.out.println("Начинаем клонирование: " + project.getRepoUrl());
             tempDir = jGitService.cloneRepository(project.getRepoUrl(), project.getAuthTokenEnc());
 
-            // 2. Извлекаем историю коммитов
             System.out.println("Анализ истории коммитов...");
             List<JGitService.CommitData> commits = jGitService.getCommitHistory(tempDir);
 
-            // 3. Сохраняем данные в БД (Участники и Коммиты)
             for (JGitService.CommitData data : commits) {
                 
-                // Ищем разработчика по Email (или создаем нового)
                 Contributor contributor = contributorRepository
                         .findByProjectIdAndPrimaryEmail(project.getId(), data.authorEmail())
                         .orElseGet(() -> {
@@ -65,16 +61,13 @@ public class GitAnalysisService {
                             return contributorRepository.save(newContrib);
                         });
 
-                // Обновляем статистику пользователя
                 contributor.setTotalCommits(contributor.getTotalCommits() + 1);
                 contributorRepository.save(contributor);
 
-                // Преобразуем Unix-время (секунды) в LocalDateTime
                 LocalDateTime commitDate = LocalDateTime.ofInstant(
                         Instant.ofEpochSecond(data.dateSeconds()), ZoneId.systemDefault()
                 );
-                
-                // Создаем коммит
+
                 GitCommit gitCommit = GitCommit.builder()
                         .hash(data.hash())
                         .project(project)
@@ -87,7 +80,6 @@ public class GitAnalysisService {
                         .isMerge(data.message().startsWith("Merge"))
                         .build();
 
-                // Сохраняем коммит (если он уже есть, Spring Data просто обновит его или проигнорирует, если hash совпадает)
                 if (!commitRepository.existsById(data.hash())) {
                     commitRepository.save(gitCommit);
                 }
@@ -113,7 +105,6 @@ public class GitAnalysisService {
             System.err.println("Ошибка анализа Git: " + e.getMessage());
             throw new RuntimeException("Ошибка при анализе Git: " + e.getMessage());
         } finally {
-            // 5. ОЧИСТКА: Обязательно удаляем папку с исходным кодом с диска сервера!
             if (tempDir != null && tempDir.exists()) {
                 FileSystemUtils.deleteRecursively(tempDir);
                 System.out.println("Временная папка удалена: " + tempDir.getAbsolutePath());

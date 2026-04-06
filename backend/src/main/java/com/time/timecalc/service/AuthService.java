@@ -30,7 +30,7 @@ public class AuthService {
 
         User user = User.builder()
                 .username(request.getUsername())
-                .passwordHash(passwordEncoder.encode(request.getPassword())) // Настоящее хэширование BCrypt!
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .role(request.getRole())
                 .build();
@@ -49,7 +49,6 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) {
-        // Эта строка проверяет, правильный ли пароль. Если нет - выбросит ошибку 403 Forbidden.
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );

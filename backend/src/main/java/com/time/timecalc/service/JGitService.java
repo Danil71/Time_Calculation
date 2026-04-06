@@ -23,26 +23,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class JGitService {
 
-    // Класс-контейнер (Record доступен с Java 14+) для возврата данных о коммите
     public record CommitData(
             String hash, String authorEmail, String authorName,
             long dateSeconds, String message,
             int linesAdded, int linesDeleted, int filesChanged
     ) {}
 
-    /**
-     * Клонирует репозиторий во временную папку
-     */
     public File cloneRepository(String repoUrl, String token) throws Exception {
-        // Создаем уникальную временную директорию
+
         File tempDir = Files.createTempDirectory("cocomo_git_").toFile();
 
         CloneCommand cloneCommand = Git.cloneRepository()
                 .setURI(repoUrl)
                 .setDirectory(tempDir)
-                .setCloneAllBranches(false); // Качаем только указанную ветку для скорости
+                .setCloneAllBranches(false);
 
-        // Если токен есть (приватный репо) - используем его
         if (token != null && !token.isEmpty()) {
             cloneCommand.setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, ""));
         }
@@ -54,9 +49,6 @@ public class JGitService {
         return tempDir;
     }
 
-    /**
-     * Читает историю коммитов и считает измененные строки
-     */
     public List<CommitData> getCommitHistory(File repoDir) throws Exception {
         List<CommitData> history = new ArrayList<>();
 
@@ -68,7 +60,6 @@ public class JGitService {
             df.setRepository(repository);
             df.setDetectRenames(true);
 
-            // Получаем все коммиты текущей ветки
             Iterable<RevCommit> commits = git.log().call();
 
             for (RevCommit commit : commits) {
@@ -76,24 +67,19 @@ public class JGitService {
                 int linesDeleted = 0;
                 int filesChanged = 0;
 
-                // Получаем дерево текущего коммита
                 AbstractTreeIterator currentTreeParser = new CanonicalTreeParser(null, repository.newObjectReader(), commit.getTree().getId());
                 AbstractTreeIterator parentTreeParser;
 
-                // Получаем дерево предыдущего коммита (чтобы сравнить, что изменилось)
                 if (commit.getParentCount() > 0) {
                     RevCommit parent = revWalk.parseCommit(commit.getParent(0).getId());
                     parentTreeParser = new CanonicalTreeParser(null, repository.newObjectReader(), parent.getTree().getId());
                 } else {
-                    // Если это самый первый коммит в проекте, сравниваем его с "пустотой"
                     parentTreeParser = new EmptyTreeIterator();
                 }
 
-                // Сравниваем два коммита (вычисляем Diff)
                 List<DiffEntry> diffs = df.scan(parentTreeParser, currentTreeParser);
                 filesChanged = diffs.size();
 
-                // Построчно считаем, сколько было добавлено и удалено
                 for (DiffEntry diff : diffs) {
                     for (Edit edit : df.toFileHeader(diff).toEditList()) {
                         linesDeleted += edit.getEndA() - edit.getBeginA();
@@ -102,10 +88,10 @@ public class JGitService {
                 }
 
                 history.add(new CommitData(
-                        commit.getName(), // SHA-1 Hash
+                        commit.getName(),
                         commit.getAuthorIdent().getEmailAddress(),
                         commit.getAuthorIdent().getName(),
-                        commit.getCommitTime(), // Время в Unix timestamp (секунды)
+                        commit.getCommitTime(),
                         commit.getFullMessage(),
                         linesAdded,
                         linesDeleted,

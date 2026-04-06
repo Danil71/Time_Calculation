@@ -14,10 +14,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class CodeAnalyzer {
 
-    // Класс для возврата двух метрик сразу
     public record AnalysisResult(long totalSloc, double avgComplexity, Map<String, Long> techStack) {}
 
-    // Список поддерживаемых расширений и их языков
     private static final Map<String, String> SUPPORTED_EXTENSIONS = Map.of(
             ".java", "Java",
             ".py", "Python",
@@ -59,7 +57,7 @@ public class CodeAnalyzer {
         }
 
         double avgComplexity = filesCount > 0 ? (double) totalComplexity / filesCount : 1.0;
-        if (totalSloc == 0) totalSloc = 1; // Защита от пустых репо
+        if (totalSloc == 0) totalSloc = 1;
 
         return new AnalysisResult(totalSloc, avgComplexity, techStack);
     }
@@ -77,7 +75,6 @@ public class CodeAnalyzer {
         return "Unknown";
     }
 
-    // Подсчет логических строк (SLOC) - исключаем пустые строки и однострочные комментарии
     private long countLogicalLines(List<String> lines, String language) {
         long sloc = 0;
         boolean inBlockComment = false;
@@ -86,7 +83,6 @@ public class CodeAnalyzer {
             String trimmed = line.trim();
             if (trimmed.isEmpty()) continue;
 
-            // Упрощенная логика игнорирования комментариев для C-подобных языков и Java
             if (language.equals("Python")) {
                 if (trimmed.startsWith("#")) continue;
             } else {
@@ -102,13 +98,11 @@ public class CodeAnalyzer {
         return sloc;
     }
 
-    // Упрощенный расчет сложности МакКейба v(G) = E - N + 2
-    // На практике v(G) вычисляется как 1 + количество точек ветвления (if, for, while, case, &&, ||)
     private long calculateMcCabeComplexity(List<String> lines) {
-        long complexity = 1; // Базовая сложность функции/файла = 1
+        long complexity = 1; 
         for (String line : lines) {
             String l = line.trim();
-            // Ищем ключевые слова ветвления алгоритма
+
             if (l.startsWith("if ") || l.startsWith("if(") ||
                 l.startsWith("for ") || l.startsWith("for(") ||
                 l.startsWith("while ") || l.startsWith("while(") ||

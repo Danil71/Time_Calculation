@@ -22,11 +22,9 @@ services:
     depends_on:
       - db
     environment:
-      # В Докере контейнеры общаются по их именам (здесь 'db'), а не localhost
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/SoftDev
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: dan
-      # Заставляем Hibernate обновить/создать таблицы при запуске
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     restart: unless-stopped
 
@@ -34,7 +32,7 @@ services:
     image: cocomo-frontend:latest
     container_name: cocomo_frontend
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
