@@ -4,7 +4,10 @@ import java.io.File;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -31,7 +34,7 @@ public class GitAnalysisService {
     private final ContributorRepository contributorRepository;
     private final CodeSnapshotRepository snapshotRepository;
     private final CodeAnalyzer codeAnalyzer;
-    
+    private final TeamProfiler teamProfiler;
     private final JGitService jGitService;
 
     @Transactional
@@ -47,27 +50,34 @@ public class GitAnalysisService {
             System.out.println("Анализ истории коммитов...");
             List<JGitService.CommitData> commits = jGitService.getCommitHistory(tempDir);
 
+            Map<Contributor, List<GitCommit>> contributorCommitsMap = new HashMap<>();
+
+            long totalLinesAdded = 0;
+            long totalLinesDeleted = 0;
+
             for (JGitService.CommitData data : commits) {
                 
+                if (!data.message().startsWith("Merge")) {
+                    totalLinesAdded += data.linesAdded();
+                    totalLinesDeleted += data.linesDeleted();
+                }
+
                 Contributor contributor = contributorRepository
                         .findByProjectIdAndPrimaryEmail(project.getId(), data.authorEmail())
-                        .orElseGet(() -> {
-                            Contributor newContrib = Contributor.builder()
-                                    .project(project)
-                                    .primaryEmail(data.authorEmail())
-                                    .displayName(data.authorName())
-                                    .totalCommits(0)
-                                    .build();
-                            return contributorRepository.save(newContrib);
-                        });
-
-                contributor.setTotalCommits(contributor.getTotalCommits() + 1);
-                contributorRepository.save(contributor);
+                        .orElseGet(() -> contributorRepository.save(
+                                Contributor.builder()
+                                        .project(project)
+                                        .primaryEmail(data.authorEmail())
+                                        .displayName(data.authorName())
+                                        .aliases(new ArrayList<>())
+                                        .totalCommits(0)
+                                        .build()
+                        ));
 
                 LocalDateTime commitDate = LocalDateTime.ofInstant(
                         Instant.ofEpochSecond(data.dateSeconds()), ZoneId.systemDefault()
                 );
-
+                
                 GitCommit gitCommit = GitCommit.builder()
                         .hash(data.hash())
                         .project(project)
@@ -82,7 +92,24 @@ public class GitAnalysisService {
 
                 if (!commitRepository.existsById(data.hash())) {
                     commitRepository.save(gitCommit);
+                    contributor.setTotalCommits(contributor.getTotalCommits() + 1);
+                    
+                    if (contributor.getFirstCommitAt() == null || commitDate.isBefore(contributor.getFirstCommitAt())) {
+                        contributor.setFirstCommitAt(commitDate);
+                    }
+                    if (contributor.getLastCommitAt() == null || commitDate.isAfter(contributor.getLastCommitAt())) {
+                        contributor.setLastCommitAt(commitDate);
+                    }
                 }
+                contributorCommitsMap.computeIfAbsent(contributor, k -> new ArrayList<>()).add(gitCommit);
+            }
+
+            long totalChanged = totalLinesAdded + totalLinesDeleted;
+            double projectChurn = totalChanged == 0 ? 0 : (double) totalLinesDeleted / totalChanged;
+            
+            for (Map.Entry<Contributor, List<GitCommit>> entry : contributorCommitsMap.entrySet()) {
+                teamProfiler.profileContributor(entry.getKey(), entry.getValue());
+                contributorRepository.save(entry.getKey());
             }
 
             System.out.println("История сохранена. Всего коммитов обработано: " + commits.size());
@@ -95,7 +122,7 @@ public class GitAnalysisService {
                     .commitHash(commits.isEmpty() ? null : commits.get(0).hash())
                     .totalSloc(analysisResult.totalSloc())
                     .avgComplexity(analysisResult.avgComplexity())
-                    .churnRate(0.15) // Churn мы посчитаем в следующей задаче
+                    .churnRate(projectChurn)
                     .techStack(analysisResult.techStack())
                     .build();
 

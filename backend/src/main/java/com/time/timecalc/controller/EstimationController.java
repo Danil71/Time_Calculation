@@ -27,11 +27,6 @@ public class EstimationController {
 
     private final CocomoEngineService cocomoService;
 
-    @PostMapping("/{projectId}/calculate")
-    public ResponseEntity<EstimationResponse> calculateEstimation(@PathVariable UUID projectId) {
-        return ResponseEntity.ok(cocomoService.calculateEstimation(projectId, null));
-    }
-
     @GetMapping("/{projectId}/history")
     public ResponseEntity<List<EstimationResponse>> getEstimationHistory(@PathVariable UUID projectId) {
         return ResponseEntity.ok(cocomoService.getHistory(projectId));
