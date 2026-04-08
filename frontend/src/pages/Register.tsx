@@ -22,7 +22,6 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Отправляем запрос на регистрацию
       const response = await api.post('/auth/register', { 
         username, 
         password, 
@@ -30,10 +29,10 @@ export default function Register() {
         role 
       });
       
-      // Сразу авторизуем пользователя после успешной регистрации
+
       login(response.data.token, response.data.username, response.data.fullName, response.data.role);
       navigate('/');
-      window.location.reload(); // Обновляем шапку с новыми данными
+      window.location.reload();
     } catch (err) {
       console.error(err);
       setError('Пользователь с таким логином уже существует');

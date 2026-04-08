@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import ProjectDetails from './pages/ProjectDetails';
 import Register from './pages/Register';
+import Team from './pages/Team';
 import { darkTechTheme } from './theme'; // Файл темы, который мы делали ранее
 
 // Защита маршрутов
@@ -29,6 +30,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="add" element={<AddProject />} />
         <Route path="project/:id" element={<ProjectDetails />} />
+        <Route path="project/:id/team" element={<Team />} />
       </Route>
     </Routes>
   );

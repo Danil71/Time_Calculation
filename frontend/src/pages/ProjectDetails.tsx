@@ -1,24 +1,28 @@
+import AddIcon from '@mui/icons-material/Add';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SyncIcon from '@mui/icons-material/Sync';
 import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
+  MenuItem,
   Paper,
   TextField,
   Typography
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/axiosClient';
 
-// Импорты для графиков
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
@@ -32,7 +36,6 @@ interface Project {
   status: string;
 }
 
-// Описание отчета
 interface Estimation {
   reportId: string;
   calculatedAt: string;
@@ -42,7 +45,12 @@ interface Estimation {
   effortPm: number;
   durationMonths: number;
   recommendedTeam: number;
-  techStack?: Record<string, number>; // В бэкенде мы назвали это techStack
+  techStack?: Record<string, number>;
+}
+
+interface ProgrammingLanguage {
+  name: string;
+  locPerFp: number;
 }
 
 export default function ProjectDetails() {
@@ -50,12 +58,18 @@ export default function ProjectDetails() {
   
   const [project, setProject] = useState<Project | null>(null);
   const [estimations, setEstimations] = useState<Estimation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [availableLanguages, setAvailableLanguages] = useState<ProgrammingLanguage[]>([]);
   
+  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [calculating, setCalculating] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const[targetSloc, setTargetSloc] = useState('');
+  
+  const[openModal, setOpenModal] = useState(false);
+  const [fpInputs, setFpInputs] = useState<Record<string, string>>({});
+
+  const [openCompleteModal, setOpenCompleteModal] = useState(false);
+  const [actualDuration, setActualDuration] = useState('');
+  const [completing, setCompleting] = useState(false);
 
   const fetchProjectData = async () => {
     try {
@@ -70,8 +84,18 @@ export default function ProjectDetails() {
     }
   };
 
+  const fetchLanguages = async () => {
+    try {
+      const res = await api.get('/languages');
+      setAvailableLanguages(res.data);
+    } catch (error) {
+      console.error('Ошибка загрузки языков', error);
+    }
+  };
+
   useEffect(() => {
     fetchProjectData();
+    fetchLanguages();
   }, [id]);
 
   const handleSyncGit = async () => {
@@ -88,22 +112,67 @@ export default function ProjectDetails() {
     }
   };
 
+  const handleOpenModal = () => {
+    const initialInputs: Record<string, string> = {};
+    const latestEst = estimations.length > 0 ? estimations[0] : null;
+    
+    if (latestEst?.techStack) {
+      Object.keys(latestEst.techStack).forEach(lang => {
+        initialInputs[lang] = ''; 
+      });
+    }
+    setFpInputs(initialInputs);
+    setOpenModal(true);
+  };
+
+  const handleFpChange = (lang: string, value: string) => {
+    setFpInputs(prev => ({ ...prev, [lang]: value }));
+  };
+
+  const removeLanguage = (lang: string) => {
+    const newInputs = { ...fpInputs };
+    delete newInputs[lang];
+    setFpInputs(newInputs);
+  };
+
+  const addNewLanguageField = () => {
+    setFpInputs(prev => ({ ...prev, ['_new_' + Date.now()]: '' }));
+  };
+
   const handleCalculate = async () => {
     setCalculating(true);
     try {
-      const url = targetSloc 
-        ? `/estimations/${id}/calculate?targetSloc=${targetSloc}` 
-        : `/estimations/${id}/calculate`;
+      const cleanData: Record<string, number> = {};
+      Object.entries(fpInputs).forEach(([key, val]) => {
+        if (!key.startsWith('_new_') && val) {
+          cleanData[key] = parseFloat(val);
+        }
+      });
+
+      await api.post(`/estimations/${id}/calculate`, { targetFpDetails: cleanData });
       
-      await api.post(url);
       setOpenModal(false);
-      setTargetSloc('');
       fetchProjectData(); 
     } catch (error) {
       console.error('Ошибка расчета COCOMO:', error);
       alert('Ошибка при расчете оценки. Убедитесь, что код был проанализирован (Синхронизация с Git).');
     } finally {
       setCalculating(false);
+    }
+  };
+
+  const handleCompleteProject = async () => {
+    setCompleting(true);
+    try {
+      await api.put(`/projects/${id}/complete?actualDurationMonths=${actualDuration}`);
+      setOpenCompleteModal(false);
+      alert('Проект успешно завершен! Данные сохранены для обучения ML-модели.');
+      fetchProjectData(); // Обновляем статус
+    } catch (error) {
+      console.error('Ошибка завершения:', error);
+      alert('Не удалось завершить проект.');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -123,37 +192,62 @@ export default function ProjectDetails() {
 
   return (
     <Box sx={{ mt: 4 }}>
-      {/* Шапка */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold">{project.name}</Typography>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" sx={{ display: 'inline-block', mr: 2 }}>
+            {project.name}
+          </Typography>
+          <Chip 
+            label={project.status === 'COMPLETED' ? 'ЗАВЕРШЕН' : 'В РАЗРАБОТКЕ'} 
+            color={project.status === 'COMPLETED' ? 'success' : 'primary'} 
+            size="small" 
+          />
+        </Box>
+
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button 
             variant="outlined" 
-            color="secondary" 
-            startIcon={syncing ? <CircularProgress size={20} /> : <SyncIcon />}
-            onClick={handleSyncGit}
-            disabled={syncing}
+            color="inherit"
+            component={Link} 
+            to={`/project/${id}/team`}
           >
-            {syncing ? 'Анализ Git...' : 'Синхронизировать'}
+            Команда
           </Button>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            startIcon={<CalculateIcon />}
-            onClick={() => setOpenModal(true)}
-          >
-            Рассчитать сроки
-          </Button>
+
+          {project.status !== 'COMPLETED' && (
+            <>
+              <Button 
+                variant="outlined" 
+                color="secondary" 
+                startIcon={syncing ? <CircularProgress size={20} /> : <SyncIcon />}
+                onClick={handleSyncGit}
+                disabled={syncing}
+              >
+                {syncing ? 'Анализ Git...' : 'Синхронизировать'}
+              </Button>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                startIcon={<CalculateIcon />}
+                onClick={handleOpenModal}
+              >
+                Рассчитать сроки
+              </Button>
+              <Button 
+                variant="contained" 
+                color="success" 
+                onClick={() => setOpenCompleteModal(true)}
+              >
+                Завершить
+              </Button>
+            </>
+          )}
         </Box>
       </Box>
 
-      {/* Дашборд метрик */}
       {latestEst ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
-          
-          {/* Левая колонка (Метрики и Отчет) */}
           <Box>
-            {/* Верхний ряд метрик */}
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 3 }}>
               <Paper sx={{ p: 3, textAlign: 'center' }}>
                 <Typography color="text.secondary">Текущий размер (SLOC)</Typography>
@@ -169,7 +263,6 @@ export default function ProjectDetails() {
               </Paper>
             </Box>
             
-            {/* Финансово-временной отчет */}
             <Paper sx={{ p: 3, mt: 3 }}>
               <Typography variant="h6" gutterBottom>Текущий прогноз (COCOMO II)</Typography>
               <Divider sx={{ mb: 2 }} />
@@ -190,14 +283,12 @@ export default function ProjectDetails() {
             </Paper>
           </Box>
 
-          {/* Правая колонка (Диаграмма языков) */}
           <Paper sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Typography variant="h6" gutterBottom>Стек технологий</Typography>
             <Box sx={{ width: '80%', mt: 2 }}>
               <Doughnut data={chartData} options={{ plugins: { legend: { position: 'bottom' } } }} />
             </Box>
           </Paper>
-          
         </Box>
       ) : (
         <Alert severity="info" sx={{ mt: 2 }}>
@@ -205,26 +296,84 @@ export default function ProjectDetails() {
         </Alert>
       )}
 
-      {/* Модальное окно для ввода целевого размера */}
-      <Dialog open={openModal} onClose={() => setOpenModal(false)}>
-        <DialogTitle>Настройка прогноза</DialogTitle>
+      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Настройка прогноза (Функциональные точки)</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ mb: 3 }}>
-            Если проект находится на начальной стадии, введите ожидаемый итоговый размер (в строках кода). Если поле оставить пустым, система рассчитает стоимость только того кода, который уже есть в Git.
+          <Typography variant="body2" sx={{ mb: 3, mt: 1, color: 'text.secondary' }}>
+            Введите ожидаемое количество Функциональных Точек для каждого языка. Система переведет их в строки кода автоматически. Оставьте поля пустыми для оценки текущего кода.
           </Typography>
-          <TextField
-            fullWidth
-            label="Целевой размер (Target SLOC)"
-            type="number"
-            placeholder="Например: 50000"
-            value={targetSloc}
-            onChange={(e) => setTargetSloc(e.target.value)}
-          />
+
+          {Object.entries(fpInputs).map(([langKey, fpValue]) => {
+            const isNew = langKey.startsWith('_new_');
+            return (
+              <Box key={langKey} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+                {isNew ? (
+                  <TextField
+                    select fullWidth size="small" label="Выберите язык"
+                    value=""
+                    onChange={(e) => {
+                      const selectedLang = e.target.value;
+                      const newInputs = { ...fpInputs };
+                      delete newInputs[langKey];
+                      newInputs[selectedLang] = '';
+                      setFpInputs(newInputs);
+                    }}
+                  >
+                    {availableLanguages
+                      .filter(l => !Object.keys(fpInputs).includes(l.name))
+                      .map(l => (
+                        <MenuItem key={l.name} value={l.name}>{l.name} (1 FP = {l.locPerFp} LOC)</MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <Typography sx={{ width: '40%', fontWeight: 'bold' }}>{langKey}</Typography>
+                )}
+
+                <TextField
+                  fullWidth size="small" type="number" label="Кол-во Функциональных точек"
+                  value={fpValue}
+                  onChange={(e) => handleFpChange(langKey, e.target.value)}
+                  disabled={isNew}
+                />
+
+                <IconButton color="error" onClick={() => removeLanguage(langKey)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            );
+          })}
+
+          <Button startIcon={<AddIcon />} onClick={addNewLanguageField} sx={{ mt: 1 }}>
+            Добавить технологию
+          </Button>
+
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setOpenModal(false)} color="inherit">Отмена</Button>
           <Button onClick={handleCalculate} variant="contained" disabled={calculating}>
-            {calculating ? 'Вычисление...' : 'Рассчитать'}
+            {calculating ? 'Вычисление...' : 'Рассчитать прогноз'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={openCompleteModal} onClose={() => setOpenCompleteModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Завершение проекта</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3, mt: 1, color: 'text.secondary' }}>
+            Укажите фактическое время, которое было затрачено на разработку этого проекта (от старта до релиза). Эти данные будут использованы нейросетью для повышения точности будущих прогнозов.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Фактическое время (в месяцах)"
+            type="number"
+            placeholder="Например: 6.5"
+            value={actualDuration}
+            onChange={(e) => setActualDuration(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenCompleteModal(false)} color="inherit">Отмена</Button>
+          <Button onClick={handleCompleteProject} variant="contained" color="success" disabled={completing || !actualDuration}>
+            {completing ? 'Сохранение...' : 'Подтвердить завершение'}
           </Button>
         </DialogActions>
       </Dialog>
