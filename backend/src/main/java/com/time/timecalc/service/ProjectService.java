@@ -24,20 +24,26 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponse createProject(ProjectRequest request) {
-        if (projectRepository.existsByRepoUrl(request.getRepoUrl())) {
-            throw new RuntimeException("Проект с таким репозиторием уже существует");
+        
+        String targetBranch = (request.getBranchName() != null && !request.getBranchName().trim().isEmpty()) 
+                ? request.getBranchName().trim() 
+                : "main";
+
+        if (projectRepository.existsByRepoUrlAndBranchName(request.getRepoUrl(), targetBranch)) {
+            throw new RuntimeException("Этот репозиторий с веткой '" + targetBranch + "' уже добавлен в систему");
         }
 
         Project project = Project.builder()
                 .name(request.getName())
                 .repoUrl(request.getRepoUrl())
-                .branchName(request.getBranchName() != null ? request.getBranchName() : "main")
+                .branchName(targetBranch)
                 .authTokenEnc(request.getToken())
                 .status(ProjectStatus.ACTIVE)
                 .currentRiskLevel(RiskLevel.LOW)
                 .build();
 
-        return mapToResponse(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        return mapToResponse(saved);
     }
 
     @Transactional(readOnly = true)

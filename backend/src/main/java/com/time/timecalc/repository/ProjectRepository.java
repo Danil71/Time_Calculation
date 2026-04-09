@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.time.timecalc.model.Project;
 
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
-    boolean existsByRepoUrl(String repoUrl);
+    boolean existsByRepoUrlAndBranchName(String repoUrl, String branchName);
 }
