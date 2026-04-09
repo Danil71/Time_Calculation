@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import SyncIcon from '@mui/icons-material/Sync';
 import {
   Alert,
@@ -176,6 +177,28 @@ export default function ProjectDetails() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!latestEst) return;
+    try {
+      // Важно: responseType: 'blob' заставляет axios не парсить ответ как JSON, а читать как файл
+      const response = await api.get(`/estimations/${latestEst.reportId}/pdf`, {
+        responseType: 'blob',
+      });
+      
+      // Создаем виртуальную ссылку и эмулируем клик для скачивания
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Estimation_Report_${project?.name}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Ошибка при скачивании PDF:', error);
+      alert('Не удалось скачать отчет.');
+    }
+  };
+
   if (loading) return <Box sx={{ mt: 10, textAlign: 'center' }}><CircularProgress /></Box>;
   if (!project) return <Typography>Проект не найден</Typography>;
 
@@ -279,6 +302,15 @@ export default function ProjectDetails() {
                   <Typography color="text.secondary">Размер команды</Typography>
                   <Typography variant="h5">{Math.ceil(latestEst.recommendedTeam)} чел</Typography>
                 </Box>
+                <Button 
+                  variant="outlined" 
+                  color="error"
+                  size="small"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={handleDownloadPdf}
+                >
+                  Скачать PDF
+                </Button>
               </Box>
             </Paper>
           </Box>
