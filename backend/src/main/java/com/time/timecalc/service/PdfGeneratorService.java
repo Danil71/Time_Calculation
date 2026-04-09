@@ -1,0 +1,124 @@
+package com.time.timecalc.service;
+
+import java.io.ByteArrayOutputStream;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
+import com.time.timecalc.model.CodeSnapshot;
+import com.time.timecalc.model.EstimationReport;
+import com.time.timecalc.model.Project;
+import com.time.timecalc.repository.EstimationReportRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class PdfGeneratorService {
+
+    private final EstimationReportRepository reportRepository;
+
+    public byte[] generateEstimationReportPdf(UUID reportId) {
+        EstimationReport report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Отчет не найден"));
+
+        CodeSnapshot snapshot = report.getSnapshot();
+        Project project = snapshot.getProject();
+
+        // Поток в памяти, куда будет записываться PDF
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4);
+
+        try {
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            // Шрифты (для поддержки русского языка в реальном проекте сюда подгружается .ttf файл Arial или Times New Roman)
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
+
+            // Заголовок документа
+            Paragraph title = new Paragraph("Project Estimation Report (COCOMO II)", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(20);
+            document.add(title);
+
+            // Блок 1: Информация о проекте
+            document.add(new Paragraph("1. Project Details", headerFont));
+            document.add(new Paragraph("Project Name: " + project.getName(), normalFont));
+            document.add(new Paragraph("Repository URL: " + project.getRepoUrl(), normalFont));
+            document.add(new Paragraph("Branch: " + project.getBranchName(), normalFont));
+            
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+            document.add(new Paragraph("Analysis Date: " + snapshot.getAnalyzedAt().format(formatter), normalFont));
+            document.add(new Paragraph("\n"));
+
+            // Блок 2: Технические метрики из Git (Таблица)
+            document.add(new Paragraph("2. Source Code Metrics (Git Analysis)", headerFont));
+            PdfPTable metricsTable = new PdfPTable(2);
+            metricsTable.setWidthPercentage(100);
+            metricsTable.setSpacingBefore(10);
+            metricsTable.setSpacingAfter(20);
+
+            addTableRow(metricsTable, "Total Logical Lines of Code (SLOC)", String.valueOf(snapshot.getTotalSloc()), normalFont);
+            addTableRow(metricsTable, "Average Cyclomatic Complexity", String.format("%.2f", snapshot.getAvgComplexity()), normalFont);
+            addTableRow(metricsTable, "Code Churn Rate (Instability)", String.format("%.1f %%", snapshot.getChurnRate() * 100), normalFont);
+            document.add(metricsTable);
+
+            // Блок 3: Результаты прогноза (Таблица)
+            document.add(new Paragraph("3. COCOMO II Estimation Results", headerFont));
+            PdfPTable estTable = new PdfPTable(2);
+            estTable.setWidthPercentage(100);
+            estTable.setSpacingBefore(10);
+            estTable.setSpacingAfter(20);
+
+            addTableRow(estTable, "Estimated Effort (Person-Months)", String.format("%.2f PM", report.getEffortPm()), normalFont);
+            addTableRow(estTable, "Estimated Duration (Months)", String.format("%.2f Months", report.getDurationMonths()), normalFont);
+            addTableRow(estTable, "Recommended Team Size", String.format("%d Persons", (int) Math.ceil(report.getTeamSize())), normalFont);
+            
+            if (report.getTargetFpDetails() != null && !report.getTargetFpDetails().isEmpty()) {
+                StringBuilder fpInfo = new StringBuilder();
+                for (Map.Entry<String, Double> entry : report.getTargetFpDetails().entrySet()) {
+                    fpInfo.append(entry.getKey()).append(": ").append(entry.getValue()).append(" FP\n");
+                }
+                addTableRow(estTable, "Target Functional Points", fpInfo.toString().trim(), normalFont);
+            }
+            
+            document.add(estTable);
+
+            // Подвал
+            Paragraph footer = new Paragraph("Generated by Automated Estimation System", FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10));
+            footer.setAlignment(Element.ALIGN_RIGHT);
+            document.add(footer);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при генерации PDF", e);
+        } finally {
+            document.close();
+        }
+
+        return baos.toByteArray();
+    }
+
+    private void addTableRow(PdfPTable table, String key, String value, Font font) {
+        PdfPCell cell1 = new PdfPCell(new Phrase(key, font));
+        cell1.setPadding(5);
+        PdfPCell cell2 = new PdfPCell(new Phrase(value, font));
+        cell2.setPadding(5);
+        table.addCell(cell1);
+        table.addCell(cell2);
+    }
+}
