@@ -287,6 +287,15 @@ export default function ProjectDetails() {
             </Box>
             
             <Paper sx={{ p: 3, mt: 3 }}>
+              <Button 
+                  variant="outlined" 
+                  color="error"
+                  size="small"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={handleDownloadPdf}
+                >
+                  Скачать PDF
+              </Button>
               <Typography variant="h6" gutterBottom>Текущий прогноз (COCOMO II)</Typography>
               <Divider sx={{ mb: 2 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
@@ -302,15 +311,6 @@ export default function ProjectDetails() {
                   <Typography color="text.secondary">Размер команды</Typography>
                   <Typography variant="h5">{Math.ceil(latestEst.recommendedTeam)} чел</Typography>
                 </Box>
-                <Button 
-                  variant="outlined" 
-                  color="error"
-                  size="small"
-                  startIcon={<PictureAsPdfIcon />}
-                  onClick={handleDownloadPdf}
-                >
-                  Скачать PDF
-                </Button>
               </Box>
             </Paper>
           </Box>
