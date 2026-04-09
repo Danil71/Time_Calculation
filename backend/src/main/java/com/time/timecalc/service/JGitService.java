@@ -29,7 +29,7 @@ public class JGitService {
             int linesAdded, int linesDeleted, int filesChanged
     ) {}
 
-    public File cloneRepository(String repoUrl, String token) throws Exception {
+    public File cloneRepository(String repoUrl, String token, String branchName) throws Exception {
 
         File tempDir = Files.createTempDirectory("cocomo_git_").toFile();
 
@@ -38,12 +38,18 @@ public class JGitService {
                 .setDirectory(tempDir)
                 .setCloneAllBranches(false);
 
+        if (branchName != null && !branchName.isEmpty()) {
+            cloneCommand.setBranch(branchName);
+
+            cloneCommand.setBranchesToClone(java.util.Collections.singletonList("refs/heads/" + branchName));
+        }
+                
         if (token != null && !token.isEmpty()) {
             cloneCommand.setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, ""));
         }
 
         try (Git git = cloneCommand.call()) {
-            System.out.println("Репозиторий успешно склонирован в: " + tempDir.getAbsolutePath());
+            System.out.println("Репозиторий успешно склонирован (ветка " + branchName + ") в: " + tempDir.getAbsolutePath());
         }
 
         return tempDir;

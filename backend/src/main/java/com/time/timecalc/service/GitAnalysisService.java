@@ -45,7 +45,7 @@ public class GitAnalysisService {
         File tempDir = null;
         try {
             System.out.println("Начинаем клонирование: " + project.getRepoUrl());
-            tempDir = jGitService.cloneRepository(project.getRepoUrl(), project.getAuthTokenEnc());
+            tempDir = jGitService.cloneRepository(project.getRepoUrl(), project.getAuthTokenEnc(), project.getBranchName());
 
             System.out.println("Анализ истории коммитов...");
             List<JGitService.CommitData> commits = jGitService.getCommitHistory(tempDir);
