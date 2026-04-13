@@ -17,6 +17,7 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Snackbar,
   TextField,
   Typography
 } from '@mui/material';
@@ -71,6 +72,7 @@ export default function ProjectDetails() {
   const [openCompleteModal, setOpenCompleteModal] = useState(false);
   const [actualDuration, setActualDuration] = useState('');
   const [completing, setCompleting] = useState(false);
+  const [forecastChangedOpen, setForecastChangedOpen] = useState(false);
 
   const fetchProjectData = async () => {
     try {
@@ -151,9 +153,10 @@ export default function ProjectDetails() {
       });
 
       await api.post(`/estimations/${id}/calculate`, { targetFpDetails: cleanData });
-      
+
       setOpenModal(false);
-      fetchProjectData(); 
+      fetchProjectData();
+      setForecastChangedOpen(true);
     } catch (error) {
       console.error('Ошибка расчета COCOMO:', error);
       alert('Ошибка при расчете оценки. Убедитесь, что код был проанализирован (Синхронизация с Git).');
@@ -387,6 +390,23 @@ export default function ProjectDetails() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={forecastChangedOpen}
+        autoHideDuration={5000}
+        onClose={() => setForecastChangedOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setForecastChangedOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          Текущий прогноз изменился.
+        </Alert>
+      </Snackbar>
+
       <Dialog open={openCompleteModal} onClose={() => setOpenCompleteModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Завершение проекта</DialogTitle>
         <DialogContent>
