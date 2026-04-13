@@ -23,7 +23,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/SoftDev
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: dan
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
     restart: unless-stopped
 
   frontend:

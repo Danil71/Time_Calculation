@@ -35,6 +35,7 @@ public class TeamProfiler {
         int totalDeleted = 0;
 
         for (GitCommit commit : commits) {
+            if (commit.getIsMerge() != null && commit.getIsMerge()) continue;
             if (commit.getLinesAdded() != null) totalAdded += commit.getLinesAdded();
             if (commit.getLinesDeleted() != null) totalDeleted += commit.getLinesDeleted();
         }
@@ -97,11 +98,19 @@ public class TeamProfiler {
            (primary.getFirstCommitAt() == null || duplicate.getFirstCommitAt().isBefore(primary.getFirstCommitAt()))) {
             primary.setFirstCommitAt(duplicate.getFirstCommitAt());
         }
+        if (duplicate.getLastCommitAt() != null &&
+                (primary.getLastCommitAt() == null || duplicate.getLastCommitAt().isAfter(primary.getLastCommitAt()))) {
+            primary.setLastCommitAt(duplicate.getLastCommitAt());
+        }
 
         // 3. Удаляем дубликат из базы
         contributorRepository.delete(duplicate);
-        
-        // 4. Сохраняем результат
+
+        // 4. Профиль по объединённой истории коммитов (churn, PERS)
+        List<GitCommit> mergedHistory = gitCommitRepository.findByContributorId(primary.getId());
+        profileContributor(primary, mergedHistory);
+
+        // 5. Сохраняем результат
         contributorRepository.save(primary);
     }
 }

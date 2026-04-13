@@ -21,6 +21,8 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, String> {
     // Быстро посчитать общее количество коммитов в проекте
     long countByProjectId(UUID projectId);
 
+    List<GitCommit> findByContributorId(UUID contributorId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update GitCommit gc set gc.contributor = :primary where gc.contributor.id = :duplicateId")
     int reassignContributor(@Param("primary") Contributor primary, @Param("duplicateId") UUID duplicateId);
