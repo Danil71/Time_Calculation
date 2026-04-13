@@ -1,5 +1,6 @@
+import DeleteIcon from '@mui/icons-material/Delete';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import { Alert, Box, Button, Card, CardActions, CardContent, Chip, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardActions, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/axiosClient';
@@ -13,6 +14,9 @@ interface Project {
 }
 
 export default function Dashboard() {
+  const [deleteModalOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const[deleting, setDeleting] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,6 +24,27 @@ export default function Dashboard() {
   useEffect(() => {
     fetchProjects();
   },[]);
+
+  const handleDeleteClick = (id: string) => {
+    setProjectToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!projectToDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/projects/${projectToDelete}`);
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
+      fetchProjects(); // Обновляем список после удаления
+    } catch (err) {
+      console.error('Ошибка удаления', err);
+      alert('Не удалось удалить проект.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -67,6 +92,14 @@ export default function Dashboard() {
                     {project.name}
                   </Typography>
                   <Chip label={project.status} size="small" color={project.status === 'ACTIVE' ? 'success' : 'default'} />
+                  <IconButton 
+                    color="error" 
+                    size="small" 
+                    onClick={() => handleDeleteClick(project.id)}
+                    title="Удалить проект"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
                 </Box>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'text.secondary' }}>
@@ -95,6 +128,23 @@ export default function Dashboard() {
           ))}
         </Box>
       )}
+      <Dialog open={deleteModalOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Подтверждение удаления</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Вы уверены, что хотите удалить этот проект? 
+            Вся история расчетов, профили команды и метрики будут безвозвратно удалены.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="inherit" disabled={deleting}>
+            Отмена
+          </Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error" disabled={deleting}>
+            {deleting ? 'Удаление...' : 'Удалить навсегда'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

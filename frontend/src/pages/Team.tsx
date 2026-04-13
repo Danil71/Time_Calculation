@@ -1,20 +1,20 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MergeTypeIcon from '@mui/icons-material/MergeType';
 import {
-    Alert,
-    Box,
-    Button,
-    Chip,
-    CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    MenuItem,
-    Paper, Table, TableBody, TableCell,
-    TableHead, TableRow,
-    TextField,
-    Typography
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Paper, Table, TableBody, TableCell,
+  TableHead, TableRow,
+  TextField,
+  Typography
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -38,7 +38,7 @@ export default function Team() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Состояния для модального окна объединения дубликатов (Merge)
+  
   const [openMerge, setOpenMerge] = useState(false);
   const [primaryId, setPrimaryId] = useState('');
   const [duplicateId, setDuplicateId] = useState('');
