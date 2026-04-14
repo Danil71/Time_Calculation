@@ -12,6 +12,8 @@ import com.time.timecalc.dto.ProjectResponse;
 import com.time.timecalc.model.Project;
 import com.time.timecalc.model.enums.ProjectStatus;
 import com.time.timecalc.model.enums.RiskLevel;
+import com.time.timecalc.repository.CodeSnapshotRepository;
+import com.time.timecalc.repository.EstimationReportRepository;
 import com.time.timecalc.repository.ProjectRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final EstimationReportRepository estimationReportRepository;
+    private final CodeSnapshotRepository codeSnapshotRepository;
 
     @Transactional
     public ProjectResponse createProject(ProjectRequest request) {
@@ -73,6 +77,8 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(UUID id) {
+        estimationReportRepository.deleteAllBySnapshotProjectId(id);
+        codeSnapshotRepository.deleteAllByProjectId(id);
         projectRepository.deleteById(id);
     }
 
