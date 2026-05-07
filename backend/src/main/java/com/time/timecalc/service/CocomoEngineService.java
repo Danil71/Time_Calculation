@@ -12,10 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.time.timecalc.dto.EstimationResponse;
 import com.time.timecalc.model.CodeSnapshot;
 import com.time.timecalc.model.EstimationReport;
+import com.time.timecalc.model.MlCalibrationLog;
 import com.time.timecalc.model.ProgrammingLanguage;
 import com.time.timecalc.model.json.CocomoParams;
 import com.time.timecalc.repository.CodeSnapshotRepository;
 import com.time.timecalc.repository.EstimationReportRepository;
+import com.time.timecalc.repository.MlCalibrationLogRepository;
 import com.time.timecalc.repository.ProgrammingLanguageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -27,16 +29,26 @@ public class CocomoEngineService {
     private final CodeSnapshotRepository snapshotRepository;
     private final EstimationReportRepository reportRepository;
     private final ProgrammingLanguageRepository programmingLanguageRepository;
+    private final MlCalibrationLogRepository mlLogRepository;
 
-    private static final double A_CONSTANT = 2.94;
-    private static final double B_CONSTANT = 0.91;
+
 
     @Transactional
     public EstimationResponse calculateEstimation(UUID projectId, Map<String, Double> targetFpDetails) {
         CodeSnapshot snapshot = snapshotRepository.findFirstByProjectIdOrderByAnalyzedAtDesc(projectId)
-        .orElseThrow(() -> new RuntimeException("Сначала проанализируйте код"));
+                .orElseThrow(() -> new RuntimeException("Сначала проанализируйте код"));
 
-        long slocToCalculate = snapshot.getTotalSloc(); // По умолчанию Аудит
+
+        double currentA = 2.94;
+        double currentB = 0.91;
+
+        java.util.Optional<MlCalibrationLog> latestLog = mlLogRepository.findFirstByOrderByPerformedAtDesc();
+        if (latestLog.isPresent()) {
+            currentA = latestLog.get().getNewA();
+            currentB = latestLog.get().getNewB();
+        }
+
+        long slocToCalculate = snapshot.getTotalSloc(); 
 
         // МАГИЯ: СУММИРУЕМ SLOC ПО КАЖДОМУ ЯЗЫКУ ОТДЕЛЬНО!
         if (targetFpDetails != null && !targetFpDetails.isEmpty()) {
@@ -59,7 +71,7 @@ public class CocomoEngineService {
         double ksloc = slocToCalculate / 1000.0;
         if (ksloc <= 0) ksloc = 0.1;
 
-        double scaleFactorE = B_CONSTANT + (0.01 * snapshot.getAvgComplexity());
+        double scaleFactorE = currentB + (0.01 * snapshot.getAvgComplexity());
 
         Map<String, Double> multipliers = new HashMap<>();
         double totalEm = 1.0;
@@ -72,10 +84,10 @@ public class CocomoEngineService {
         multipliers.put("CHURN_RISK", churnRisk);
         totalEm *= churnRisk;
 
-        double effortPm = A_CONSTANT * Math.pow(ksloc, scaleFactorE) * totalEm;
+        double effortPm = currentA * Math.pow(ksloc, scaleFactorE) * totalEm;
 
         double cConstant = 3.67;
-        double fExponent = 0.28 + 0.2 * (scaleFactorE - B_CONSTANT);
+        double fExponent = 0.28 + 0.2 * (scaleFactorE - currentB);
         double durationMonths = cConstant * Math.pow(effortPm, fExponent);
 
         // 6. Оптимальная команда
@@ -83,7 +95,7 @@ public class CocomoEngineService {
 
         // Сохраняем параметры формулы
         CocomoParams params = CocomoParams.builder()
-                .coefficientA(A_CONSTANT)
+                .coefficientA(currentA)
                 .coefficientB(scaleFactorE)
                 .multipliers(multipliers)
                 .build();

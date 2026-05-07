@@ -24,6 +24,8 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: dan
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      # Allow frontend hosted on any VM IP/host (adjust to stricter patterns if needed)
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: http://*:*
     restart: unless-stopped
 
   frontend:

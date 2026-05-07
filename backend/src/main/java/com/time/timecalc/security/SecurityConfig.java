@@ -1,7 +1,10 @@
 package com.time.timecalc.security;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,6 +31,17 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
+
+    /**
+     * Comma-separated allowed Origin patterns for CORS.
+     *
+     * Examples:
+     * - http://localhost:*
+     * - http://*:3000
+     * - http://*:*
+     */
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost}")
+    private String allowedOriginPatterns;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -58,7 +72,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost", "http://localhost:3000", "http://localhost:8080")); // Адреса Реакта
+        // Use patterns to avoid hardcoding VM IPs/hosts.
+        // Prefer setting APP_CORS_ALLOWED_ORIGIN_PATTERNS in Docker / env.
+        List<String> patterns = new ArrayList<>();
+        for (String s : allowedOriginPatterns.split(",")) {
+            String p = s.trim();
+            if (!p.isEmpty()) patterns.add(p);
+        }
+        if (patterns.isEmpty()) {
+            patterns = Arrays.asList("http://localhost:*");
+        }
+        configuration.setAllowedOriginPatterns(patterns);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
