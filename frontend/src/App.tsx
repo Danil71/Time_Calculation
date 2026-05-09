@@ -4,6 +4,7 @@ import type { JSX } from 'react/jsx-runtime';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AddProject from './pages/AddProject';
+import AdminPanel from './pages/AdminPanel';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import ProjectDetails from './pages/ProjectDetails';
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="add" element={<AddProject />} />
         <Route path="project/:id" element={<ProjectDetails />} />
         <Route path="project/:id/team" element={<Team />} />
+        <Route path="admin" element={<AdminPanel />} />
       </Route>
     </Routes>
   );
