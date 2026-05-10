@@ -12,19 +12,38 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  ml:
+    build:
+      context: ../ML
+      dockerfile: Dockerfile
+    image: cocomo-ml:latest
+    container_name: cocomo_ml
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')\""]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
   backend:
     image: cocomo-backend:latest
     container_name: cocomo_backend
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_started
+      ml:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/SoftDev
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: dan
-      SPRING_JPA_HIBERNATE_DDL_AUTO: create
-      # Allow frontend hosted on any VM IP/host (adjust to stricter patterns if needed)
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APPLICATION_ML_SERVICE_URL: http://ml:5000/api/v1
       APP_CORS_ALLOWED_ORIGIN_PATTERNS: http://*:*
     restart: unless-stopped
 

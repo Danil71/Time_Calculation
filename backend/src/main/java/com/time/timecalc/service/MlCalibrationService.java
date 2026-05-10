@@ -82,23 +82,29 @@ public class MlCalibrationService {
             HttpEntity<List<Map<String, Object>>> requestEntity = new HttpEntity<>(dataset);
             response = restTemplate.exchange(targetUrl, HttpMethod.POST, requestEntity, CalibrationResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка связи с сервисом машинного обучения: " + e.getMessage());
+            throw new RuntimeException("Ошибка связи с сервисом машинного обучения (" + targetUrl + "): " + e.getMessage());
         }
 
         CalibrationResponse mlResult = response.getBody();
-
-        if (mlResult != null) {
-            MlCalibrationLog log = MlCalibrationLog.builder()
-                    .oldA(CURRENT_A)
-                    .oldB(CURRENT_B)
-                    .newA(mlResult.getNewCoefficientA())
-                    .newB(mlResult.getNewCoefficientB())
-                    .rmseScore(mlResult.getRmseScore())
-                    .projectsUsedCount(mlResult.getProjectsAnalyzed())
-                    .build();
-            logRepository.save(log);
-        
+        if (mlResult == null) {
+            throw new RuntimeException("Пустой ответ от сервиса машинного обучения (" + targetUrl + ").");
         }
+        if (mlResult.getNewCoefficientA() == null || mlResult.getNewCoefficientB() == null
+                || mlResult.getRmseScore() == null || mlResult.getProjectsAnalyzed() == null) {
+            throw new RuntimeException(
+                    "Ответ ML-сервиса не содержит ожидаемых полей (new_a, new_b, rmse, projects_analyzed).");
+        }
+
+        MlCalibrationLog log = MlCalibrationLog.builder()
+                .oldA(CURRENT_A)
+                .oldB(CURRENT_B)
+                .newA(mlResult.getNewCoefficientA())
+                .newB(mlResult.getNewCoefficientB())
+                .rmseScore(mlResult.getRmseScore())
+                .projectsUsedCount(mlResult.getProjectsAnalyzed())
+                .build();
+        log = logRepository.save(log);
+        mlResult.setPerformedAt(log.getPerformedAt());
 
         return mlResult;
     }
