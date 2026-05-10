@@ -31,6 +31,7 @@ public class MlCalibrationService {
     private final ProjectRepository projectRepository;
     private final EstimationReportRepository reportRepository;
     private final MlCalibrationLogRepository logRepository;
+    private final RestTemplate restTemplate;
     
     private static final double CURRENT_A = 2.94;
     private static final double CURRENT_B = 0.91;
@@ -74,7 +75,6 @@ public class MlCalibrationService {
             dataset.add(projectData);
         }
 
-        RestTemplate restTemplate = new RestTemplate();
         String targetUrl = mlServiceUrl + "/calibrate";
         
         ResponseEntity<CalibrationResponse> response;

@@ -50,7 +50,10 @@ public class GitAnalysisService {
             System.out.println("Анализ истории коммитов...");
             List<JGitService.CommitData> commits = jGitService.getCommitHistory(tempDir);
 
-            Map<Contributor, List<GitCommit>> contributorCommitsMap = new HashMap<>();
+            // Нельзя использовать Contributor как ключ HashMap: он мутируется (totalCommits, first/lastCommitAt),
+            // а Lombok @Data включает эти поля в hashCode/equals -> ключ становится "плавающим".
+            Map<String, Contributor> contributorsByEmail = new HashMap<>();
+            Map<String, List<GitCommit>> contributorCommitsMap = new HashMap<>();
 
             long totalLinesAdded = 0;
             long totalLinesDeleted = 0;
@@ -62,17 +65,21 @@ public class GitAnalysisService {
                     totalLinesDeleted += data.linesDeleted();
                 }
 
-                Contributor contributor = contributorRepository
-                        .findByProjectIdAndPrimaryEmail(project.getId(), data.authorEmail())
-                        .orElseGet(() -> contributorRepository.save(
-                                Contributor.builder()
-                                        .project(project)
-                                        .primaryEmail(data.authorEmail())
-                                        .displayName(data.authorName())
-                                        .aliases(new ArrayList<>())
-                                        .totalCommits(0)
-                                        .build()
-                        ));
+                Contributor contributor = contributorsByEmail.get(data.authorEmail());
+                if (contributor == null) {
+                    contributor = contributorRepository
+                            .findByProjectIdAndPrimaryEmail(project.getId(), data.authorEmail())
+                            .orElseGet(() -> contributorRepository.save(
+                                    Contributor.builder()
+                                            .project(project)
+                                            .primaryEmail(data.authorEmail())
+                                            .displayName(data.authorName())
+                                            .aliases(new ArrayList<>())
+                                            .totalCommits(0)
+                                            .build()
+                            ));
+                    contributorsByEmail.put(data.authorEmail(), contributor);
+                }
 
                 LocalDateTime commitDate = LocalDateTime.ofInstant(
                         Instant.ofEpochSecond(data.dateSeconds()), ZoneId.systemDefault()
@@ -101,15 +108,17 @@ public class GitAnalysisService {
                         contributor.setLastCommitAt(commitDate);
                     }
                 }
-                contributorCommitsMap.computeIfAbsent(contributor, k -> new ArrayList<>()).add(gitCommit);
+                contributorCommitsMap.computeIfAbsent(data.authorEmail(), k -> new ArrayList<>()).add(gitCommit);
             }
 
             long totalChanged = totalLinesAdded + totalLinesDeleted;
             double projectChurn = totalChanged == 0 ? 0 : (double) totalLinesDeleted / totalChanged;
             
-            for (Map.Entry<Contributor, List<GitCommit>> entry : contributorCommitsMap.entrySet()) {
-                teamProfiler.profileContributor(entry.getKey(), entry.getValue());
-                contributorRepository.save(entry.getKey());
+            for (Map.Entry<String, List<GitCommit>> entry : contributorCommitsMap.entrySet()) {
+                Contributor contributor = contributorsByEmail.get(entry.getKey());
+                if (contributor == null) continue;
+                teamProfiler.profileContributor(contributor, entry.getValue());
+                contributorRepository.save(contributor);
             }
 
             System.out.println("История сохранена. Всего коммитов обработано: " + commits.size());
