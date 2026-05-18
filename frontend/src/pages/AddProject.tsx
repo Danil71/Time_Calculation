@@ -65,7 +65,7 @@ export default function AddProject() {
             fullWidth label="Personal Access Token (PAT)" variant="outlined" margin="normal"
             type="password"
             value={token} onChange={(e) => setToken(e.target.value)}
-            helperText="Оставьте пустым для публичных (Open Source) проектов"
+            helperText="Для приватного GitLab (в т.ч. корпоративного) укажите PAT — иначе анализ не сможет клонировать репозиторий. Пусто только для публичных clone без авторизации."
           />
           
           <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>

@@ -1,9 +1,12 @@
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import LanguageIcon from '@mui/icons-material/Language';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { Alert, Box, Button, Card, CardActions, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/axiosClient';
+import { useAuth } from '../context/AuthContext';
 
 interface Project {
   id: string;
@@ -14,6 +17,7 @@ interface Project {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [deleteModalOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const[deleting, setDeleting] = useState(false);
@@ -65,11 +69,35 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold' }}>Дашборд проектов</Typography>
-        <Button variant="contained" color="primary" component={Link} to="/add">
-          + Новый проект
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            <Button
+              variant="outlined"
+              color="info"
+              component={Link}
+              to="/languages"
+              startIcon={<LanguageIcon />}
+            >
+              Языки программирования
+            </Button>
+          )}
+          {user?.role === 'ADMIN' && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              component={Link}
+              to="/admin"
+              startIcon={<AdminPanelSettingsIcon />}
+            >
+              Панель администратора
+            </Button>
+          )}
+          <Button variant="contained" color="primary" component={Link} to="/add">
+            + Новый проект
+          </Button>
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
