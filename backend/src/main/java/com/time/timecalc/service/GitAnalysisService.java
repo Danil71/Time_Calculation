@@ -138,8 +138,13 @@ public class GitAnalysisService {
             snapshotRepository.save(snapshot);
 
         } catch (Exception e) {
+            String detail = e.getMessage();
+            if (detail != null && detail.contains("no CredentialsProvider has been registered")) {
+                detail = "нужен Personal Access Token (PAT) в настройках проекта. "
+                        + "Вход в GitLab в браузере не подставляется в клон на сервере; для приватного инстанса токен обязателен.";
+            }
             System.err.println("Ошибка анализа Git: " + e.getMessage());
-            throw new RuntimeException("Ошибка при анализе Git: " + e.getMessage());
+            throw new RuntimeException("Ошибка при анализе Git: " + detail);
         } finally {
             if (tempDir != null && tempDir.exists()) {
                 FileSystemUtils.deleteRecursively(tempDir);

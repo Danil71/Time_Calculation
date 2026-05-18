@@ -1,6 +1,8 @@
 package com.time.timecalc.service;
 
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,10 +20,24 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class JGitService {
+
+    /**
+     * Дополнительные хосты Git (через запятую), для которых нужна схема GitLab HTTPS:
+     * username {@code oauth2}, пароль — PAT. Укажите свой корпоративный хост, если в URL нет подстроки "gitlab".
+     */
+    private final String gitlabOauth2ExtraHosts;
+    private final String gitlabUsername;
+
+    public JGitService(@Value("${timecalc.git.gitlab-oauth2-hosts:}") String gitlabOauth2ExtraHosts,
+                        @Value("${timecalc.git.gitlab-username:oauth2}") String gitlabUsername ) {
+        this.gitlabOauth2ExtraHosts = gitlabOauth2ExtraHosts == null ? "" : gitlabOauth2ExtraHosts;
+        this.gitlabUsername = gitlabUsername;
+    }
 
     public record CommitData(
             String hash, String authorEmail, String authorName,
@@ -45,7 +61,7 @@ public class JGitService {
         }
                 
         if (token != null && !token.isEmpty()) {
-            cloneCommand.setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, ""));
+            cloneCommand.setCredentialsProvider(credentialsProviderForRepo(repoUrl, token));
         }
 
         try (Git git = cloneCommand.call()) {
@@ -106,5 +122,44 @@ public class JGitService {
             }
         }
         return history;
+    }
+
+    /**
+     * GitLab (в т.ч. self-hosted) для HTTPS с PAT ожидает {@code oauth2} как имя пользователя.
+     * GitHub и ряд других систем принимают токен как username и пустой пароль.
+     */
+    private UsernamePasswordCredentialsProvider credentialsProviderForRepo(String repoUrl, String token) {
+        if (useGitlabOauth2Style(repoUrl)) {
+            System.out.println("Используется GitLab OAuth2 стиль");
+            return new UsernamePasswordCredentialsProvider(gitlabUsername, token);
+        }
+        System.out.println("Используется GitHub стиль");
+        return new UsernamePasswordCredentialsProvider(token, "");
+    }
+
+    private boolean useGitlabOauth2Style(String repoUrl) {
+        if (repoUrl == null) {
+            return false;
+        }
+        if (repoUrl.toLowerCase().contains("gitlab")) {
+            return true;
+        }
+        try {
+            URI uri = new URI(repoUrl);
+            String host = uri.getHost();
+            if (host == null) {
+                return false;
+            }
+            host = host.toLowerCase();
+            for (String part : gitlabOauth2ExtraHosts.split(",")) {
+                String h = part.trim().toLowerCase();
+                if (!h.isEmpty() && host.equals(h)) {
+                    return true;
+                }
+            }
+        } catch (URISyntaxException ignored) {
+            // не GitLab-схема по URL
+        }
+        return false;
     }
 }

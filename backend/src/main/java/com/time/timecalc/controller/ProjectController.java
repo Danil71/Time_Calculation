@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,12 +44,14 @@ public class ProjectController {
 
     // Создать новый проект
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ProjectResponse> createProject(@RequestBody ProjectRequest request) {
         return ResponseEntity.ok(projectService.createProject(request));
     }
 
     // Указать фактическое время (для завершенного проекта, чтобы ML мог учиться)
     @PutMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ProjectResponse> completeProject(
             @PathVariable UUID id, 
             @RequestParam Double actualDurationMonths) {
@@ -57,6 +60,7 @@ public class ProjectController {
 
     // Удалить проект
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<Void> deleteProject(@PathVariable UUID id) {
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();

@@ -13,9 +13,6 @@ services:
     restart: unless-stopped
 
   ml:
-    build:
-      context: ../ML
-      dockerfile: Dockerfile
     image: cocomo-ml:latest
     container_name: cocomo_ml
     ports:
@@ -45,6 +42,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       APPLICATION_ML_SERVICE_URL: http://ml:5000/api/v1
       APP_CORS_ALLOWED_ORIGIN_PATTERNS: http://*:*
+      TIMECALC_GIT_GITLAB_OAUTH2_HOSTS: gitlab.com
+      TIMECALC_GIT_GITLAB_USERNAME: oauth2
     restart: unless-stopped
 
   frontend:
@@ -54,6 +53,8 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
 
 volumes:

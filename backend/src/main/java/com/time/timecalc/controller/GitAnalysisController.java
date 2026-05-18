@@ -3,6 +3,7 @@ package com.time.timecalc.controller;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,7 @@ public class GitAnalysisController {
 
     // POST /api/git/{projectId}/analyze
     @PostMapping("/{projectId}/analyze")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<String> runGitAnalysis(@PathVariable UUID projectId) {
         
         // В реальном Enterprise-проекте этот вызов стоит сделать асинхронным 

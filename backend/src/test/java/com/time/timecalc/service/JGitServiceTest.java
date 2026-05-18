@@ -35,7 +35,7 @@ class JGitServiceTest {
                     .call();
         }
 
-        JGitService service = new JGitService();
+        JGitService service = new JGitService("", "oauth2");
         List<JGitService.CommitData> history = service.getCommitHistory(tempDir);
 
         assertThat(history).isNotEmpty();
@@ -48,4 +48,3 @@ class JGitServiceTest {
         assertThat(history.get(0).linesDeleted()).isGreaterThanOrEqualTo(0);
     }
 }
-
